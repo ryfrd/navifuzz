@@ -28,7 +28,7 @@ const (
 	defaultSongFormat     = `{{.TrackStr}}. {{.Title}} ({{.DurationStr}})`
 	defaultArtistFormat   = `{{.Name}} ({{.AlbumCount}} albums)`
 	defaultPlaylistFormat = `{{.Name}} ({{.SongCount}} songs)`
-	defaultGenreFormat    = `{{.Name}}`
+	defaultGenreFormat    = `{{.Name}} ({{.SongCount}} songs, {{.AlbumCount}} albums)`
 )
 
 func Load() (*Config, error) {

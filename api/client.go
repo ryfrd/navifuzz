@@ -122,7 +122,9 @@ type searchResponse struct {
 }
 
 type Genre struct {
-	Name string `json:"name"`
+	Name       string `json:"value"`
+	SongCount  int    `json:"songCount"`
+	AlbumCount int    `json:"albumCount"`
 }
 
 type genreData struct {
