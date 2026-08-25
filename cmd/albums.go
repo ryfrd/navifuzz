@@ -235,13 +235,14 @@ func runSelector(name, input, prompt string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// TUI selectors (fzf) need a real TTY to render. GUI selectors (dmenu, fuzzel,
-// rofi) work fine when navifuzz itself has no TTY, eg. launched from a keybinding.
+// TUI selectors (fzf, sk) need a real TTY to render. GUI selectors (dmenu,
+// fuzzel, rofi, tofi, wofi, bemenu) work fine when navifuzz itself has no TTY,
+// eg. launched from a keybinding.
 func needsTTY(name string) bool {
 	switch name {
-	case "dmenu", "fuzzel", "rofi":
+	case "dmenu", "fuzzel", "rofi", "tofi", "wofi", "bemenu":
 		return false
-	default: // fzf and unknown names, which fall back to fzf
+	default: // fzf, sk, and unknown names, which fall back to fzf
 		return true
 	}
 }
@@ -309,6 +310,14 @@ func selectorArgs(name, prompt string) []string {
 		return []string{"fuzzel", "--dmenu", "-p", prompt + " > "}
 	case "rofi":
 		return []string{"rofi", "-dmenu", "-p", prompt}
+	case "tofi":
+		return []string{"tofi", "--prompt-text=" + prompt + " > "}
+	case "wofi":
+		return []string{"wofi", "--dmenu", "-p", prompt}
+	case "bemenu":
+		return []string{"bemenu", "-p", prompt + " > "}
+	case "sk":
+		return []string{"sk", "--prompt", prompt + " > "}
 	default: // fzf
 		return []string{"fzf", "--prompt", prompt + " > "}
 	}

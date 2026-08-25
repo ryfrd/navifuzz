@@ -42,7 +42,7 @@ navifuzz needs the following:
 
 - A [navidrome](https://navidrome.org/) server running somewhere.
 - A media player: [mpv](https://mpv.io/) or [vlc](https://www.videolan.org/vlc/) currently supported.
-- A fuzzy picker/launcher: [fzf](https://github.com/junegunn/fzf), [dmenu](https://tools.suckless.org/dmenu/), [fuzzel](https://codeberg.org/dnkl/fuzzel), and [rofi](https://github.com/davatorium/rofi) currenlty supported.
+- A fuzzy picker/launcher: [fzf](https://github.com/junegunn/fzf), [skim](https://github.com/lotabout/skim), [fuzzel](https://codeberg.org/dnkl/fuzzel), [rofi](https://github.com/davatorium/rofi), [tofi](https://github.com/philj56/tofi), [wofi](https://hg.sr.ht/~scoopta/wofi), [dmenu](https://tools.suckless.org/dmenu/), and [bemenu](https://github.com/Cloudef/bemenu) currently supported.
 
 ### Configuration
 
