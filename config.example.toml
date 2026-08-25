@@ -1,0 +1,20 @@
+# navifzf configuration
+# Place this file at ~/.config/navifzf/config.toml
+
+# Navidrome server details
+server   = "https://navidrome.example.com"
+username = "user"
+password = "pass"
+
+# Mark songs as played on the server
+scrobble = true
+
+# Selector tool: fzf, dmenu, rofi, or fuzzel
+selector = "fzf"
+
+# Player tool: mpv, vlc, or cvlc
+player = "mpv"
+
+# Shuffle and loop apply when playing multiple songs
+shuffle = true
+loop    = true
