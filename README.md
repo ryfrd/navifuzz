@@ -1,5 +1,3 @@
-# navifuzz
-
 ## LLM Disclaimer
 
 The code was written with the assistance of [MiMo v2.5](https://mimo.xiaomi.com/mimo-v2-5) using the [opencode](https://opencode.ai/) free tier.
@@ -10,7 +8,9 @@ This repository is mirrored from my [forgejo](https://git.dymc.win/james/navifuz
 
 ## What is it?
 
-A command line tool for browsing and playing music from a [navidrome](https://navidrome.org/) server.
+navifuzz is a command line tool for browsing and playing the music on your [navidrome](https://navidrome.org/) server.
+
+It fetches lists of albums, artists, songs, playlists, and genres from the server, presents them in a fuzzy picker, and hands your selection off to a media player.
 
 ## What is it not?
 
