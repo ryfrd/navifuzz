@@ -109,7 +109,7 @@ type playlistsResponse struct {
 
 type playlistResponse struct {
 	Playlist struct {
-		Song []Song `json:"song"`
+		Song []Song `json:"entry"`
 	} `json:"playlist"`
 }
 
