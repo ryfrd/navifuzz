@@ -125,6 +125,23 @@ type Genre struct {
 	Name string `json:"name"`
 }
 
+type genreData struct {
+	Genre
+}
+
+func RenderGenre(g Genre, format string) (string, error) {
+	tmpl, err := template.New("genre").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid genre_format: %w", err)
+	}
+	data := genreData{Genre: g}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("genre_format error: %w", err)
+	}
+	return buf.String(), nil
+}
+
 type genresResponse struct {
 	Genres struct {
 		Genre []Genre `json:"genre"`

@@ -10,5 +10,6 @@
   "artist_format": "{{.Name}} ({{.AlbumCount}} albums)",
   "album_format": "{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)",
   "song_format": "{{.TrackStr}}. {{.Title}} ({{.DurationStr}})",
-  "playlist_format": "{{.Name}} ({{.SongCount}} songs)"
+  "playlist_format": "{{.Name}} ({{.SongCount}} songs)",
+  "genre_format": "{{.Name}}"
 }

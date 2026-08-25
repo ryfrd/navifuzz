@@ -20,6 +20,7 @@ type Config struct {
 	SongFormat     string `json:"song_format"`
 	ArtistFormat   string `json:"artist_format"`
 	PlaylistFormat string `json:"playlist_format"`
+	GenreFormat    string `json:"genre_format"`
 }
 
 const (
@@ -27,6 +28,7 @@ const (
 	defaultSongFormat     = `{{.TrackStr}}. {{.Title}} ({{.DurationStr}})`
 	defaultArtistFormat   = `{{.Name}} ({{.AlbumCount}} albums)`
 	defaultPlaylistFormat = `{{.Name}} ({{.SongCount}} songs)`
+	defaultGenreFormat    = `{{.Name}}`
 )
 
 func Load() (*Config, error) {
@@ -77,6 +79,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.PlaylistFormat == "" {
 		cfg.PlaylistFormat = defaultPlaylistFormat
+	}
+	if cfg.GenreFormat == "" {
+		cfg.GenreFormat = defaultGenreFormat
 	}
 
 	return &cfg, nil

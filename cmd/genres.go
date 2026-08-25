@@ -35,7 +35,11 @@ func Genres(n int) error {
 
 	genreNames := make([]string, 0, len(genres))
 	for _, g := range genres {
-		genreNames = append(genreNames, g.Name)
+		display, err := api.RenderGenre(g, cfg.GenreFormat)
+		if err != nil {
+			return err
+		}
+		genreNames = append(genreNames, display)
 	}
 
 	selected, err := runSelector(cfg.Selector, strings.Join(genreNames, "\n"), "Select genre")
