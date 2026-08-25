@@ -1,15 +1,17 @@
 package api
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 const apiVersion = "1.16.1"
@@ -29,15 +31,35 @@ type Album struct {
 	Year      int    `json:"year"`
 	SongCount int    `json:"songCount"`
 	Duration  int    `json:"duration"`
+	Genre     string `json:"genre"`
+}
+
+type Artist struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	AlbumCount     int    `json:"albumCount"`
+	AlbumID        string `json:"albumId,omitempty"`
+	Genre          string `json:"genre,omitempty"`
+	UserRating     int    `json:"userRating,omitempty"`
+	AverageRating  float64 `json:"averageRating,omitempty"`
 }
 
 type Song struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Artist   string `json:"artist"`
-	Album    string `json:"album"`
-	Duration int    `json:"duration"`
-	Track    int    `json:"track"`
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Artist       string `json:"artist"`
+	Album        string `json:"album"`
+	Duration     int    `json:"duration"`
+	Track        int    `json:"track"`
+	DiscNumber   int    `json:"discNumber"`
+	Genre        string `json:"genre"`
+	Year         int    `json:"year"`
+	Suffix       string `json:"suffix"`
+	ContentType  string `json:"contentType"`
+	Size         int64  `json:"size"`
+	BitRate      int    `json:"bitRate"`
+	SampleRate   int    `json:"sampleRate"`
+	ChannelCount int    `json:"channelCount"`
 }
 
 type albumListResponse struct {
@@ -50,6 +72,29 @@ type albumResponse struct {
 	Album struct {
 		Song []Song `json:"song"`
 	} `json:"album"`
+}
+
+type artistsResponse struct {
+	Artists struct {
+		Index []struct {
+			Name string   `json:"name"`
+			Artists []Artist `json:"artist"`
+		} `json:"index"`
+	} `json:"artists"`
+}
+
+type artistResponse struct {
+	Artist struct {
+		Album []Album `json:"album"`
+	} `json:"artist"`
+}
+
+type searchResponse struct {
+	SearchResult3 struct {
+		Artist []Artist `json:"artist"`
+		Album  []Album  `json:"album"`
+		Song    []Song   `json:"song"`
+	} `json:"searchResult3"`
 }
 
 type subsonicError struct {
@@ -155,6 +200,8 @@ func (c *Client) GetAlbumList2(listType string, size int) ([]Album, error) {
 	params.Set("type", listType)
 	if size > 0 {
 		params.Set("size", strconv.Itoa(size))
+	} else {
+		params.Set("size", "99999")
 	}
 
 	data, err := c.doRequest("getAlbumList2", params)
@@ -185,6 +232,85 @@ func (c *Client) GetAlbum(id string) ([]Song, error) {
 	}
 
 	return result.Album.Song, nil
+}
+
+func (c *Client) GetArtists() ([]Artist, error) {
+	data, err := c.doRequest("getArtists", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result artistsResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	var artists []Artist
+	for _, idx := range result.Artists.Index {
+		artists = append(artists, idx.Artists...)
+	}
+	return artists, nil
+}
+
+func (c *Client) GetArtist(id string) ([]Album, error) {
+	params := url.Values{}
+	params.Set("id", id)
+
+	data, err := c.doRequest("getArtist", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result artistResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Artist.Album, nil
+}
+
+func (c *Client) Search3(query string) ([]Artist, []Album, []Song, error) {
+	params := url.Values{}
+	params.Set("query", query)
+
+	data, err := c.doRequest("search3", params)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var result searchResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return result.SearchResult3.Artist, result.SearchResult3.Album, result.SearchResult3.Song, nil
+}
+
+type randomSongsResponse struct {
+	RandomSongs struct {
+		Song []Song `json:"song"`
+	} `json:"randomSongs"`
+}
+
+func (c *Client) GetRandomSongs(size int) ([]Song, error) {
+	params := url.Values{}
+	if size > 0 {
+		params.Set("size", strconv.Itoa(size))
+	} else {
+		params.Set("size", "99999")
+	}
+
+	data, err := c.doRequest("getRandomSongs", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result randomSongsResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.RandomSongs.Song, nil
 }
 
 func (c *Client) StreamURL(id string) string {
@@ -228,12 +354,84 @@ func FormatDuration(secs int) string {
 	return fmt.Sprintf("%d:%02d", m, s)
 }
 
-func DisplayAlbum(a Album) string {
-	return fmt.Sprintf("%s - %s (%s, %d songs)",
-		a.Artist, a.Name, strconv.Itoa(a.Year), a.SongCount)
+func FormatSize(bytes int64) string {
+	const (
+		KB = 1024
+		MB = 1024 * KB
+		GB = 1024 * MB
+	)
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/float64(GB))
+	case bytes >= MB:
+		return fmt.Sprintf("%.1f MB", float64(bytes)/float64(MB))
+	case bytes >= KB:
+		return fmt.Sprintf("%.1f KB", float64(bytes)/float64(KB))
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
 }
 
-func DisplaySong(s Song) string {
-	return fmt.Sprintf("%02d. %s (%s)",
-		s.Track, s.Title, FormatDuration(s.Duration))
+type albumData struct {
+	Album
+	DurationStr string
+}
+
+type songData struct {
+	Song
+	DurationStr string
+	TrackStr    string
+	SizeStr     string
+	BitRateStr  string
+	FileType    string
+}
+
+type artistData struct {
+	Artist
+}
+
+func RenderArtist(a Artist, format string) (string, error) {
+	tmpl, err := template.New("artist").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid artist_format: %w", err)
+	}
+	data := artistData{Artist: a}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("artist_format error: %w", err)
+	}
+	return buf.String(), nil
+}
+
+func RenderAlbum(a Album, format string) (string, error) {
+	tmpl, err := template.New("album").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid album_format: %w", err)
+	}
+	data := albumData{Album: a, DurationStr: FormatDuration(a.Duration)}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("album_format error: %w", err)
+	}
+	return buf.String(), nil
+}
+
+func RenderSong(s Song, format string) (string, error) {
+	tmpl, err := template.New("song").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid song_format: %w", err)
+	}
+	data := songData{
+		Song:        s,
+		DurationStr: FormatDuration(s.Duration),
+		TrackStr:    fmt.Sprintf("%02d", s.Track),
+		SizeStr:     FormatSize(s.Size),
+		BitRateStr:  fmt.Sprintf("%d kbps", s.BitRate),
+		FileType:    s.Suffix,
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("song_format error: %w", err)
+	}
+	return buf.String(), nil
 }

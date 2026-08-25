@@ -9,15 +9,24 @@ import (
 )
 
 type Config struct {
-	Server   string `toml:"server"`
-	Username string `toml:"username"`
-	Password string `toml:"password"`
-	Scrobble bool   `toml:"scrobble"`
-	Selector string `toml:"selector"`
-	Player   string `toml:"player"`
-	Shuffle  bool   `toml:"shuffle"`
-	Loop     bool   `toml:"loop"`
+	Server       string `toml:"server"`
+	Username     string `toml:"username"`
+	Password     string `toml:"password"`
+	Scrobble     bool   `toml:"scrobble"`
+	Selector     string `toml:"selector"`
+	Player       string `toml:"player"`
+	Shuffle      bool   `toml:"shuffle"`
+	Loop         bool   `toml:"loop"`
+	AlbumFormat  string `toml:"album_format"`
+	SongFormat   string `toml:"song_format"`
+	ArtistFormat string `toml:"artist_format"`
 }
+
+const (
+	defaultAlbumFormat  = `{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)`
+	defaultSongFormat   = `{{.TrackStr}}. {{.Title}} ({{.DurationStr}})`
+	defaultArtistFormat = `{{.Name}} ({{.AlbumCount}} albums)`
+)
 
 func Load() (*Config, error) {
 	home, err := os.UserHomeDir()
@@ -51,6 +60,15 @@ func Load() (*Config, error) {
 	}
 	if cfg.Player == "" {
 		cfg.Player = "mpv"
+	}
+	if cfg.AlbumFormat == "" {
+		cfg.AlbumFormat = defaultAlbumFormat
+	}
+	if cfg.SongFormat == "" {
+		cfg.SongFormat = defaultSongFormat
+	}
+	if cfg.ArtistFormat == "" {
+		cfg.ArtistFormat = defaultArtistFormat
 	}
 
 	return &cfg, nil

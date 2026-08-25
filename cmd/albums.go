@@ -35,11 +35,17 @@ func Albums(listType string, size int) error {
 		return nil
 	}
 
-	albumIDs := make([]string, len(albums))
-	albumDisplay := make([]string, len(albums))
-	for i, a := range albums {
-		albumIDs[i] = a.ID
-		albumDisplay[i] = api.DisplayAlbum(a)
+	albumIDs := make([]string, 0, len(albums))
+	albumDisplay := make([]string, 0, len(albums)+1)
+	albumIDs = append(albumIDs, "__PLAY_ALL__")
+	albumDisplay = append(albumDisplay, fmt.Sprintf("Play all (%d albums)", len(albums)))
+	for _, a := range albums {
+		albumIDs = append(albumIDs, a.ID)
+		display, err := api.RenderAlbum(a, cfg.AlbumFormat)
+		if err != nil {
+			return err
+		}
+		albumDisplay = append(albumDisplay, display)
 	}
 
 	selected, err := runSelector(cfg.Selector, strings.Join(albumDisplay, "\n"), "Select album")
@@ -55,6 +61,22 @@ func Albums(listType string, size int) error {
 		return fmt.Errorf("selection not found")
 	}
 
+	if albumIDs[idx] == "__PLAY_ALL__" {
+		var allSongs []api.Song
+		for _, a := range albums {
+			songs, err := client.GetAlbum(a.ID)
+			if err != nil {
+				return fmt.Errorf("cannot fetch album: %w", err)
+			}
+			allSongs = append(allSongs, songs...)
+		}
+		if len(allSongs) == 0 {
+			fmt.Fprintln(os.Stderr, "No songs found.")
+			return nil
+		}
+		return playSongs(client, allSongs, cfg)
+	}
+
 	fmt.Fprintln(os.Stderr, "Fetching songs...")
 	songs, err := client.GetAlbum(albumIDs[idx])
 	if err != nil {
@@ -66,33 +88,7 @@ func Albums(listType string, size int) error {
 		return nil
 	}
 
-	songIDs := make([]string, 0, len(songs)+1)
-	songDisplay := make([]string, 0, len(songs)+1)
-	songIDs = append(songIDs, "__PLAY_ALL__")
-	songDisplay = append(songDisplay, fmt.Sprintf("Play all (%d songs)", len(songs)))
-	for _, s := range songs {
-		songIDs = append(songIDs, s.ID)
-		songDisplay = append(songDisplay, api.DisplaySong(s))
-	}
-
-	selectedSong, err := runSelector(cfg.Selector, strings.Join(songDisplay, "\n"), "Select song")
-	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
-		return fmt.Errorf("selector failed: %w", err)
-	}
-
-	songIdx := indexOf(songDisplay, selectedSong)
-	if songIdx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	if songIDs[songIdx] == "__PLAY_ALL__" {
-		return playSongs(client, songs, cfg)
-	}
-
-	return playSongs(client, []api.Song{songs[songIdx-1]}, cfg)
+	return selectSongs(client, songs, cfg)
 }
 
 func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
@@ -127,6 +123,40 @@ func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+func selectSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
+	songIDs := make([]string, 0, len(songs)+1)
+	songDisplay := make([]string, 0, len(songs)+1)
+	songIDs = append(songIDs, "__PLAY_ALL__")
+	songDisplay = append(songDisplay, fmt.Sprintf("Play all (%d songs)", len(songs)))
+	for _, s := range songs {
+		songIDs = append(songIDs, s.ID)
+		display, err := api.RenderSong(s, cfg.SongFormat)
+		if err != nil {
+			return err
+		}
+		songDisplay = append(songDisplay, display)
+	}
+
+	selected, err := runSelector(cfg.Selector, strings.Join(songDisplay, "\n"), "Select song")
+	if err != nil {
+		if err.Error() == "exit status 1" {
+			return nil
+		}
+		return fmt.Errorf("selector failed: %w", err)
+	}
+
+	idx := indexOf(songDisplay, selected)
+	if idx < 0 {
+		return fmt.Errorf("selection not found")
+	}
+
+	if songIDs[idx] == "__PLAY_ALL__" {
+		return playSongs(client, songs, cfg)
+	}
+
+	return playSongs(client, []api.Song{songs[idx-1]}, cfg)
 }
 
 func runSelector(name, input, prompt string) (string, error) {
@@ -183,7 +213,7 @@ func selectorArgs(name, prompt string) []string {
 	case "dmenu":
 		return []string{"dmenu", "-p", prompt + " > "}
 	case "fuzzel":
-		return []string{"fuzzel", "-p", prompt + " > "}
+		return []string{"fuzzel", "--dmenu", "-p", prompt + " > "}
 	case "rofi":
 		return []string{"rofi", "-dmenu", "-p", prompt}
 	default: // fzf

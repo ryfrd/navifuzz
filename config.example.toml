@@ -18,3 +18,13 @@ player = "mpv"
 # Shuffle and loop apply when playing multiple songs
 shuffle = true
 loop    = true
+
+# Display format (Go templates)
+# Artist: .Name, .ID, .AlbumCount, .Genre, .UserRating, .AverageRating
+# Album:  .Name, .Artist, .ArtistID, .Year, .SongCount, .Duration, .DurationStr, .Genre
+# Song:   .Title, .Artist, .Album, .Track, .TrackStr, .Duration, .DurationStr,
+#         .DiscNumber, .Genre, .Year, .Suffix, .ContentType, .Size, .SizeStr,
+#         .BitRate, .BitRateStr, .SampleRate, .ChannelCount, .FileType
+# artist_format = "{{.Name}} ({{.AlbumCount}} albums)"
+# album_format  = "{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)"
+# song_format   = "{{.TrackStr}}. {{.Title}} ({{.DurationStr}})"
