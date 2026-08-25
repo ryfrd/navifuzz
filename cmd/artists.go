@@ -48,10 +48,10 @@ func Artists() error {
 
 	selected, err := runSelector(cfg.Selector, strings.Join(artistDisplay, "\n"), "Select artist")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selected == "" {
+		return nil
 	}
 
 	idx := indexOf(artistDisplay, selected)
@@ -107,10 +107,10 @@ func Artists() error {
 
 	selectedAlbum, err := runSelector(cfg.Selector, strings.Join(albumDisplay, "\n"), "Select album")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selectedAlbum == "" {
+		return nil
 	}
 
 	albumIdx := indexOf(albumDisplay, selectedAlbum)

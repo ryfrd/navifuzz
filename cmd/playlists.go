@@ -46,10 +46,10 @@ func Playlists() error {
 
 	selected, err := runSelector(cfg.Selector, strings.Join(playlistDisplay, "\n"), "Select playlist")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selected == "" {
+		return nil
 	}
 
 	idx := indexOf(playlistDisplay, selected)

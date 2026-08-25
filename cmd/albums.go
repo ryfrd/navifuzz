@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/james/navifuzz/api"
@@ -50,10 +50,10 @@ func Albums(listType string, size int) error {
 
 	selected, err := runSelector(cfg.Selector, strings.Join(albumDisplay, "\n"), "Select album")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selected == "" {
+		return nil
 	}
 
 	idx := indexOf(albumDisplay, selected)
@@ -97,9 +97,14 @@ func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
 		urls = append(urls, client.StreamURL(s.ID))
 	}
 
-	tmpDir := os.TempDir()
-	playlistFile := filepath.Join(tmpDir, "navifuzz-playlist.m3u")
-	if err := os.WriteFile(playlistFile, []byte(strings.Join(urls, "\n")), 0644); err != nil {
+	tmpFile, err := os.CreateTemp("", "navifuzz-playlist-*.m3u")
+	if err != nil {
+		return fmt.Errorf("cannot create playlist: %w", err)
+	}
+	playlistFile := tmpFile.Name()
+	tmpFile.Close()
+	if err := os.WriteFile(playlistFile, []byte(strings.Join(urls, "\n")), 0600); err != nil {
+		os.Remove(playlistFile)
 		return fmt.Errorf("cannot write playlist: %w", err)
 	}
 	defer os.Remove(playlistFile)
@@ -141,10 +146,10 @@ func selectSongs(client *api.Client, songs []api.Song, cfg *config.Config) error
 
 	selected, err := runSelector(cfg.Selector, strings.Join(songDisplay, "\n"), "Select song")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selected == "" {
+		return nil
 	}
 
 	idx := indexOf(songDisplay, selected)
@@ -168,6 +173,10 @@ func runSelector(name, input, prompt string) (string, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return "", nil
+		}
 		return "", err
 	}
 

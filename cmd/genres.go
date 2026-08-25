@@ -44,10 +44,10 @@ func Genres(n int) error {
 
 	selected, err := runSelector(cfg.Selector, strings.Join(genreNames, "\n"), "Select genre")
 	if err != nil {
-		if err.Error() == "exit status 1" {
-			return nil
-		}
 		return fmt.Errorf("selector failed: %w", err)
+	}
+	if selected == "" {
+		return nil
 	}
 
 	idx := indexOf(genreNames, selected)

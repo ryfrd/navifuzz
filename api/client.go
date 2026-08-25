@@ -3,15 +3,16 @@ package api
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 )
 
 const apiVersion = "1.16.1"
@@ -194,7 +195,9 @@ func (c *Client) doRequest(endpoint string, params url.Values) ([]byte, error) {
 	}
 
 	reqURL := fmt.Sprintf("%s/rest/%s?%s", c.Server, endpoint, auth.Encode())
-	resp, err := http.Get(reqURL)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(reqURL)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -459,10 +462,10 @@ func (c *Client) Scrobble(id string) error {
 
 func generateSalt() string {
 	b := make([]byte, 16)
-	for i := range b {
-		b[i] = "0123456789abcdef"[rand.Intn(16)]
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
 	}
-	return string(b)
+	return fmt.Sprintf("%x", b)
 }
 
 func computeToken(password, salt string) string {
