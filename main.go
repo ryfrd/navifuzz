@@ -21,6 +21,8 @@ func main() {
 		runArtists(os.Args[2:])
 	case "songs":
 		runSongs(os.Args[2:])
+	case "playlists":
+		runPlaylists(os.Args[2:])
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -107,6 +109,24 @@ Options:
 	}
 }
 
+func runPlaylists(args []string) {
+	fs := flag.NewFlagSet("playlists", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintln(os.Stderr, `Browse and play playlists from Navidrome.
+
+Usage: navifuzz playlists [OPTIONS]
+
+Options:
+  -h, --help      Print help`)
+	}
+	fs.Parse(args)
+
+	if err := cmd.Playlists(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func printUsage() {
 	fmt.Fprintln(os.Stderr, `Usage: navifuzz [OPTIONS] <COMMAND>
 
@@ -114,6 +134,7 @@ Commands:
   albums      Browse and play albums
   artists     Browse artists, albums, and songs
   songs       Play random songs
+  playlists   Browse and play playlists
 
 Options:
   -h, --help      Print help

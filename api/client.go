@@ -89,6 +89,30 @@ type artistResponse struct {
 	} `json:"artist"`
 }
 
+type Playlist struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Comment  string `json:"comment,omitempty"`
+	Duration int    `json:"duration"`
+	SongCount int   `json:"songCount"`
+	Owner    string `json:"owner,omitempty"`
+	Public   bool   `json:"public,omitempty"`
+	Created  string `json:"created,omitempty"`
+	Changed  string `json:"changed,omitempty"`
+}
+
+type playlistsResponse struct {
+	Playlists struct {
+		Playlist []Playlist `json:"playlist"`
+	} `json:"playlists"`
+}
+
+type playlistResponse struct {
+	Playlist struct {
+		Song []Song `json:"song"`
+	} `json:"playlist"`
+}
+
 type searchResponse struct {
 	SearchResult3 struct {
 		Artist []Artist `json:"artist"`
@@ -286,6 +310,37 @@ func (c *Client) Search3(query string) ([]Artist, []Album, []Song, error) {
 	return result.SearchResult3.Artist, result.SearchResult3.Album, result.SearchResult3.Song, nil
 }
 
+func (c *Client) GetPlaylists() ([]Playlist, error) {
+	data, err := c.doRequest("getPlaylists", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result playlistsResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Playlists.Playlist, nil
+}
+
+func (c *Client) GetPlaylist(id string) ([]Song, error) {
+	params := url.Values{}
+	params.Set("id", id)
+
+	data, err := c.doRequest("getPlaylist", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result playlistResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Playlist.Song, nil
+}
+
 type randomSongsResponse struct {
 	RandomSongs struct {
 		Song []Song `json:"song"`
@@ -370,6 +425,24 @@ func FormatSize(bytes int64) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
+}
+
+type playlistData struct {
+	Playlist
+	DurationStr string
+}
+
+func RenderPlaylist(p Playlist, format string) (string, error) {
+	tmpl, err := template.New("playlist").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid playlist_format: %w", err)
+	}
+	data := playlistData{Playlist: p, DurationStr: FormatDuration(p.Duration)}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("playlist_format error: %w", err)
+	}
+	return buf.String(), nil
 }
 
 type albumData struct {

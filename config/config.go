@@ -8,23 +8,25 @@ import (
 )
 
 type Config struct {
-	Server       string `json:"server"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	Scrobble     bool   `json:"scrobble"`
-	Selector     string `json:"selector"`
-	Player       string `json:"player"`
-	Shuffle      bool   `json:"shuffle"`
-	Loop         bool   `json:"loop"`
-	AlbumFormat  string `json:"album_format"`
-	SongFormat   string `json:"song_format"`
-	ArtistFormat string `json:"artist_format"`
+	Server         string `json:"server"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	Scrobble       bool   `json:"scrobble"`
+	Selector       string `json:"selector"`
+	Player         string `json:"player"`
+	Shuffle        bool   `json:"shuffle"`
+	Loop           bool   `json:"loop"`
+	AlbumFormat    string `json:"album_format"`
+	SongFormat     string `json:"song_format"`
+	ArtistFormat   string `json:"artist_format"`
+	PlaylistFormat string `json:"playlist_format"`
 }
 
 const (
-	defaultAlbumFormat  = `{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)`
-	defaultSongFormat   = `{{.TrackStr}}. {{.Title}} ({{.DurationStr}})`
-	defaultArtistFormat = `{{.Name}} ({{.AlbumCount}} albums)`
+	defaultAlbumFormat    = `{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)`
+	defaultSongFormat     = `{{.TrackStr}}. {{.Title}} ({{.DurationStr}})`
+	defaultArtistFormat   = `{{.Name}} ({{.AlbumCount}} albums)`
+	defaultPlaylistFormat = `{{.Name}} ({{.SongCount}} songs)`
 )
 
 func Load() (*Config, error) {
@@ -72,6 +74,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.ArtistFormat == "" {
 		cfg.ArtistFormat = defaultArtistFormat
+	}
+	if cfg.PlaylistFormat == "" {
+		cfg.PlaylistFormat = defaultPlaylistFormat
 	}
 
 	return &cfg, nil
