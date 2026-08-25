@@ -2,7 +2,6 @@
   "server": "https://navidrome.example.com",
   "username": "user",
   "password": "pass",
-  "scrobble": true,
   "selector": "fzf",
   "player": "mpv",
   "shuffle": true,

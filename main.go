@@ -4,41 +4,84 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/james/navifuzz/cmd"
+	"github.com/ryfrd/navifuzz/cmd"
 )
 
+var version = "0.1.0"
+
 func main() {
-	if len(os.Args) < 2 {
+	configPath, versionOnly, args := parseGlobals(os.Args[1:])
+	if versionOnly {
+		fmt.Printf("navifuzz %s\n", version)
+		return
+	}
+
+	if len(args) == 0 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
-	case "albums":
-		runAlbums(os.Args[2:])
-	case "artists":
-		runArtists(os.Args[2:])
-	case "songs":
-		runSongs(os.Args[2:])
-	case "playlists":
-		runPlaylists(os.Args[2:])
-	case "genres":
-		runGenres(os.Args[2:])
+	switch args[0] {
 	case "help", "--help", "-h":
 		printUsage()
+		return
+	case "version":
+		fmt.Printf("navifuzz %s\n", version)
+		return
+	}
+
+	runCommand(args[0], args[1:], configPath)
+}
+
+func parseGlobals(args []string) (configPath string, versionOnly bool, rest []string) {
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--config":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --config requires a path")
+				os.Exit(1)
+			}
+			configPath = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--config="):
+			configPath = strings.TrimPrefix(args[i], "--config=")
+		case args[i] == "--version" || args[i] == "-V" || args[i] == "-v":
+			versionOnly = true
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return configPath, versionOnly, rest
+}
+
+func runCommand(name string, args []string, configPath string) {
+	switch name {
+	case "albums":
+		runAlbums(args, configPath)
+	case "artists":
+		runArtists(args, configPath)
+	case "songs":
+		runSongs(args, configPath)
+	case "playlists":
+		runPlaylists(args, configPath)
+	case "genres":
+		runGenres(args, configPath)
 	default:
-		fmt.Fprintf(os.Stderr, "error: unknown command `%s`\n\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "error: unknown command `%s`\n\n", name)
 		printUsage()
 		os.Exit(1)
 	}
 }
 
-func runAlbums(args []string) {
+func runAlbums(args []string, configPath string) {
 	fs := flag.NewFlagSet("albums", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
+	help := fs.Bool("h", false, "")
+	fs.BoolVar(help, "help", false, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Browse and play albums from Navidrome.
+		fmt.Fprintln(fs.Output(), `Browse and play albums from Navidrome.
 
 Usage: navifuzz albums [OPTIONS] [TYPE]
 
@@ -50,6 +93,11 @@ Options:
   -h, --help      Print help`)
 	}
 	fs.Parse(args)
+	if *help {
+		fs.SetOutput(os.Stdout)
+		fs.Usage()
+		os.Exit(0)
+	}
 
 	listType := "newest"
 	if fs.NArg() > 0 {
@@ -67,16 +115,18 @@ Options:
 		os.Exit(1)
 	}
 
-	if err := cmd.Albums(listType, *n); err != nil {
+	if err := cmd.Albums(listType, *n, configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runArtists(args []string) {
+func runArtists(args []string, configPath string) {
 	fs := flag.NewFlagSet("artists", flag.ExitOnError)
+	help := fs.Bool("h", false, "")
+	fs.BoolVar(help, "help", false, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Browse artists, then albums, then songs.
+		fmt.Fprintln(fs.Output(), `Browse artists, then albums, then songs.
 
 Usage: navifuzz artists [OPTIONS]
 
@@ -84,18 +134,25 @@ Options:
   -h, --help      Print help`)
 	}
 	fs.Parse(args)
+	if *help {
+		fs.SetOutput(os.Stdout)
+		fs.Usage()
+		os.Exit(0)
+	}
 
-	if err := cmd.Artists(); err != nil {
+	if err := cmd.Artists(configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runSongs(args []string) {
+func runSongs(args []string, configPath string) {
 	fs := flag.NewFlagSet("songs", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
+	help := fs.Bool("h", false, "")
+	fs.BoolVar(help, "help", false, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Play random songs from the library.
+		fmt.Fprintln(fs.Output(), `Play random songs from the library.
 
 Usage: navifuzz songs [OPTIONS]
 
@@ -104,17 +161,24 @@ Options:
   -h, --help      Print help`)
 	}
 	fs.Parse(args)
+	if *help {
+		fs.SetOutput(os.Stdout)
+		fs.Usage()
+		os.Exit(0)
+	}
 
-	if err := cmd.Songs(*n); err != nil {
+	if err := cmd.Songs(*n, configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runPlaylists(args []string) {
+func runPlaylists(args []string, configPath string) {
 	fs := flag.NewFlagSet("playlists", flag.ExitOnError)
+	help := fs.Bool("h", false, "")
+	fs.BoolVar(help, "help", false, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Browse and play playlists from Navidrome.
+		fmt.Fprintln(fs.Output(), `Browse and play playlists from Navidrome.
 
 Usage: navifuzz playlists [OPTIONS]
 
@@ -122,18 +186,25 @@ Options:
   -h, --help      Print help`)
 	}
 	fs.Parse(args)
+	if *help {
+		fs.SetOutput(os.Stdout)
+		fs.Usage()
+		os.Exit(0)
+	}
 
-	if err := cmd.Playlists(); err != nil {
+	if err := cmd.Playlists(configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runGenres(args []string) {
+func runGenres(args []string, configPath string) {
 	fs := flag.NewFlagSet("genres", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
+	help := fs.Bool("h", false, "")
+	fs.BoolVar(help, "help", false, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Browse genres and play songs from a selected genre.
+		fmt.Fprintln(fs.Output(), `Browse genres and play songs from a selected genre.
 
 Usage: navifuzz genres [OPTIONS]
 
@@ -142,8 +213,13 @@ Options:
   -h, --help      Print help`)
 	}
 	fs.Parse(args)
+	if *help {
+		fs.SetOutput(os.Stdout)
+		fs.Usage()
+		os.Exit(0)
+	}
 
-	if err := cmd.Genres(*n); err != nil {
+	if err := cmd.Genres(*n, configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
@@ -160,7 +236,7 @@ Commands:
   genres      Browse genres and play songs
 
 Options:
-  -h, --help      Print help
-
-Config: ~/.config/navifuzz/config.json`)
+      --config <PATH>     Path to config file [default: ~/.config/navifuzz/config.json]
+  -h, --help              Print help
+  -v, -V, --version       Print version`)
 }

@@ -6,23 +6,19 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
-	"github.com/james/navifuzz/api"
-	"github.com/james/navifuzz/config"
+	"github.com/ryfrd/navifuzz/api"
+	"github.com/ryfrd/navifuzz/config"
 )
 
-func Albums(listType string, size int) error {
-	cfg, err := config.Load()
+func Albums(listType string, size int, configPath string) error {
+	sess, err := newSession(configPath)
 	if err != nil {
 		return err
 	}
-
-	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
-
-	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
-	if err := client.Ping(); err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
-	}
+	client := sess.client
+	cfg := sess.cfg
 
 	fmt.Fprintln(os.Stderr, "Fetching albums...")
 	albums, err := client.GetAlbumList2(listType, size)
@@ -35,40 +31,22 @@ func Albums(listType string, size int) error {
 		return nil
 	}
 
-	albumIDs := make([]string, 0, len(albums))
-	albumDisplay := make([]string, 0, len(albums)+1)
-	albumIDs = append(albumIDs, "__PLAY_ALL__")
-	albumDisplay = append(albumDisplay, fmt.Sprintf("Play all (%d albums)", len(albums)))
-	for _, a := range albums {
-		albumIDs = append(albumIDs, a.ID)
-		display, err := api.RenderAlbum(a, cfg.AlbumFormat)
-		if err != nil {
-			return err
-		}
-		albumDisplay = append(albumDisplay, display)
-	}
-
-	selected, err := runSelector(cfg.Selector, strings.Join(albumDisplay, "\n"), "Select album")
+	render, err := api.AlbumRenderer(cfg.AlbumFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selected == "" {
+	res, err := pick(albums, render, fmt.Sprintf("Play all (%d albums)", len(albums)), "Select album", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res.ok {
 		return nil
 	}
 
-	idx := indexOf(albumDisplay, selected)
-	if idx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	if albumIDs[idx] == "__PLAY_ALL__" {
-		var allSongs []api.Song
-		for _, a := range albums {
-			songs, err := client.GetAlbum(a.ID)
-			if err != nil {
-				return fmt.Errorf("cannot fetch album: %w", err)
-			}
-			allSongs = append(allSongs, songs...)
+	if res.playAll {
+		allSongs, err := fetchSongsForAlbums(client, albums)
+		if err != nil {
+			return err
 		}
 		if len(allSongs) == 0 {
 			fmt.Fprintln(os.Stderr, "No songs found.")
@@ -78,7 +56,7 @@ func Albums(listType string, size int) error {
 	}
 
 	fmt.Fprintln(os.Stderr, "Fetching songs...")
-	songs, err := client.GetAlbum(albumIDs[idx])
+	songs, err := client.GetAlbum(res.item.ID)
 	if err != nil {
 		return fmt.Errorf("cannot fetch album: %w", err)
 	}
@@ -92,6 +70,11 @@ func Albums(listType string, size int) error {
 }
 
 func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
+	binary := playerBinary(cfg.Player)
+	if _, err := exec.LookPath(binary); err != nil {
+		return fmt.Errorf("player %q not found: %w", binary, err)
+	}
+
 	var urls []string
 	for _, s := range songs {
 		urls = append(urls, client.StreamURL(s.ID))
@@ -119,53 +102,122 @@ func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
 		return fmt.Errorf("player failed: %w", err)
 	}
 
-	if cfg.Scrobble {
-		for _, s := range songs {
-			if err := client.Scrobble(s.ID); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: scrobble failed for %s: %v\n", s.Title, err)
-			}
-		}
-	}
-
 	return nil
 }
 
 func selectSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
-	songIDs := make([]string, 0, len(songs)+1)
-	songDisplay := make([]string, 0, len(songs)+1)
-	songIDs = append(songIDs, "__PLAY_ALL__")
-	songDisplay = append(songDisplay, fmt.Sprintf("Play all (%d songs)", len(songs)))
-	for _, s := range songs {
-		songIDs = append(songIDs, s.ID)
-		display, err := api.RenderSong(s, cfg.SongFormat)
-		if err != nil {
-			return err
-		}
-		songDisplay = append(songDisplay, display)
-	}
-
-	selected, err := runSelector(cfg.Selector, strings.Join(songDisplay, "\n"), "Select song")
+	render, err := api.SongRenderer(cfg.SongFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selected == "" {
+	res, err := pick(songs, render, fmt.Sprintf("Play all (%d songs)", len(songs)), "Select song", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res.ok {
 		return nil
 	}
 
-	idx := indexOf(songDisplay, selected)
-	if idx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	if songIDs[idx] == "__PLAY_ALL__" {
+	if res.playAll {
 		return playSongs(client, songs, cfg)
 	}
 
-	return playSongs(client, []api.Song{songs[idx-1]}, cfg)
+	return playSongs(client, []api.Song{res.item}, cfg)
+}
+
+const maxConcurrency = 16
+
+func fetchSongsForAlbums(client *api.Client, albums []api.Album) ([]api.Song, error) {
+	sem := make(chan struct{}, maxConcurrency)
+	results := make([][]api.Song, len(albums))
+	var wg sync.WaitGroup
+	var firstErr error
+	var errMu sync.Mutex
+
+	for i, a := range albums {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			songs, err := client.GetAlbum(a.ID)
+			if err != nil {
+				errMu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("cannot fetch album: %w", err)
+				}
+				errMu.Unlock()
+				return
+			}
+			results[i] = songs
+		}()
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	var allSongs []api.Song
+	for _, songs := range results {
+		allSongs = append(allSongs, songs...)
+	}
+	return allSongs, nil
+}
+
+func fetchSongsForArtists(client *api.Client, artists []api.Artist) ([]api.Song, error) {
+	sem := make(chan struct{}, maxConcurrency)
+	albumByArtist := make([][]api.Album, len(artists))
+	var wg sync.WaitGroup
+	var firstErr error
+	var errMu sync.Mutex
+
+	for i, a := range artists {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			albums, err := client.GetArtist(a.ID)
+			if err != nil {
+				errMu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("cannot fetch artist: %w", err)
+				}
+				errMu.Unlock()
+				return
+			}
+			albumByArtist[i] = albums
+		}()
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	var allAlbums []api.Album
+	for _, albums := range albumByArtist {
+		allAlbums = append(allAlbums, albums...)
+	}
+	return fetchSongsForAlbums(client, allAlbums)
+}
+
+func isTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 func runSelector(name, input, prompt string) (string, error) {
+	if !isTerminal() && needsTTY(name) {
+		return "", fmt.Errorf("%s requires a terminal: run navifuzz from a terminal, or use a GUI selector (dmenu, fuzzel, rofi)", name)
+	}
+
 	args := selectorArgs(name, prompt)
+	if _, err := exec.LookPath(args[0]); err != nil {
+		return "", fmt.Errorf("selector %q not found: %w", args[0], err)
+	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = strings.NewReader(input)
@@ -174,13 +226,24 @@ func runSelector(name, input, prompt string) (string, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		if errors.As(err, &exitErr) && (exitErr.ExitCode() == 1 || exitErr.ExitCode() == 130) {
 			return "", nil
 		}
 		return "", err
 	}
 
 	return strings.TrimSpace(string(out)), nil
+}
+
+// TUI selectors (fzf) need a real TTY to render. GUI selectors (dmenu, fuzzel,
+// rofi) work fine when navifuzz itself has no TTY, eg. launched from a keybinding.
+func needsTTY(name string) bool {
+	switch name {
+	case "dmenu", "fuzzel", "rofi":
+		return false
+	default: // fzf and unknown names, which fall back to fzf
+		return true
+	}
 }
 
 func indexOf(list []string, item string) int {
@@ -190,6 +253,27 @@ func indexOf(list []string, item string) int {
 		}
 	}
 	return -1
+}
+
+func makeUniqueDisplay(display []string) {
+	used := make(map[string]bool, len(display))
+	for i, d := range display {
+		candidate := d
+		for n := 2; used[candidate]; n++ {
+			candidate = fmt.Sprintf("%s (%d)", d, n)
+		}
+		used[candidate] = true
+		display[i] = candidate
+	}
+}
+
+func playerBinary(name string) string {
+	switch name {
+	case "vlc", "cvlc":
+		return name
+	default:
+		return "mpv"
+	}
 }
 
 func playerArgs(name, playlist string, shuffle, loop bool) []string {

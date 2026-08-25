@@ -3,24 +3,17 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/james/navifuzz/api"
-	"github.com/james/navifuzz/config"
+	"github.com/ryfrd/navifuzz/api"
 )
 
-func Genres(n int) error {
-	cfg, err := config.Load()
+func Genres(n int, configPath string) error {
+	sess, err := newSession(configPath)
 	if err != nil {
 		return err
 	}
-
-	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
-
-	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
-	if err := client.Ping(); err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
-	}
+	client := sess.client
+	cfg := sess.cfg
 
 	fmt.Fprintln(os.Stderr, "Fetching genres...")
 	genres, err := client.GetGenres()
@@ -33,30 +26,20 @@ func Genres(n int) error {
 		return nil
 	}
 
-	genreNames := make([]string, 0, len(genres))
-	for _, g := range genres {
-		display, err := api.RenderGenre(g, cfg.GenreFormat)
-		if err != nil {
-			return err
-		}
-		genreNames = append(genreNames, display)
-	}
-
-	selected, err := runSelector(cfg.Selector, strings.Join(genreNames, "\n"), "Select genre")
+	render, err := api.GenreRenderer(cfg.GenreFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selected == "" {
+	res, err := pick(genres, render, "", "Select genre", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res.ok {
 		return nil
 	}
 
-	idx := indexOf(genreNames, selected)
-	if idx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	fmt.Fprintf(os.Stderr, "Fetching songs in %s...\n", genres[idx].Name)
-	songs, err := client.GetSongsByGenre(genres[idx].Name, n)
+	fmt.Fprintf(os.Stderr, "Fetching songs in %s...\n", res.item.Name)
+	songs, err := client.GetSongsByGenre(res.item.Name, n)
 	if err != nil {
 		return fmt.Errorf("cannot fetch songs by genre: %w", err)
 	}

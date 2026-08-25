@@ -3,26 +3,16 @@ package cmd
 import (
 	"fmt"
 	"os"
-
-	"github.com/james/navifuzz/api"
-	"github.com/james/navifuzz/config"
 )
 
-func Songs(size int) error {
-	cfg, err := config.Load()
+func Songs(size int, configPath string) error {
+	sess, err := newSession(configPath)
 	if err != nil {
 		return err
 	}
 
-	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
-
-	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
-	if err := client.Ping(); err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
-	}
-
 	fmt.Fprintln(os.Stderr, "Fetching songs...")
-	songs, err := client.GetRandomSongs(size)
+	songs, err := sess.client.GetRandomSongs(size)
 	if err != nil {
 		return fmt.Errorf("cannot fetch songs: %w", err)
 	}
@@ -32,5 +22,5 @@ func Songs(size int) error {
 		return nil
 	}
 
-	return selectSongs(client, songs, cfg)
+	return selectSongs(sess.client, songs, sess.cfg)
 }

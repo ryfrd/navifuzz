@@ -11,7 +11,6 @@ type Config struct {
 	Server         string `json:"server"`
 	Username       string `json:"username"`
 	Password       string `json:"password"`
-	Scrobble       bool   `json:"scrobble"`
 	Selector       string `json:"selector"`
 	Player         string `json:"player"`
 	Shuffle        bool   `json:"shuffle"`
@@ -40,8 +39,17 @@ func Load() (*Config, error) {
 		}
 		configDir = filepath.Join(home, ".config")
 	}
+	return loadFrom(filepath.Join(configDir, "navifuzz", "config.json"))
+}
 
-	path := filepath.Join(configDir, "navifuzz", "config.json")
+func LoadPath(path string) (*Config, error) {
+	if path == "" {
+		return Load()
+	}
+	return loadFrom(path)
+}
+
+func loadFrom(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read config %s: %w", path, err)

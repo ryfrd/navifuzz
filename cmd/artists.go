@@ -3,24 +3,17 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/james/navifuzz/api"
-	"github.com/james/navifuzz/config"
+	"github.com/ryfrd/navifuzz/api"
 )
 
-func Artists() error {
-	cfg, err := config.Load()
+func Artists(configPath string) error {
+	sess, err := newSession(configPath)
 	if err != nil {
 		return err
 	}
-
-	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
-
-	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
-	if err := client.Ping(); err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
-	}
+	client := sess.client
+	cfg := sess.cfg
 
 	fmt.Fprintln(os.Stderr, "Fetching artists...")
 	artists, err := client.GetArtists()
@@ -33,46 +26,22 @@ func Artists() error {
 		return nil
 	}
 
-	artistIDs := make([]string, 0, len(artists))
-	artistDisplay := make([]string, 0, len(artists)+1)
-	artistIDs = append(artistIDs, "__PLAY_ALL__")
-	artistDisplay = append(artistDisplay, fmt.Sprintf("Play all (%d artists)", len(artists)))
-	for _, a := range artists {
-		artistIDs = append(artistIDs, a.ID)
-		display, err := api.RenderArtist(a, cfg.ArtistFormat)
-		if err != nil {
-			return err
-		}
-		artistDisplay = append(artistDisplay, display)
-	}
-
-	selected, err := runSelector(cfg.Selector, strings.Join(artistDisplay, "\n"), "Select artist")
+	artistRender, err := api.ArtistRenderer(cfg.ArtistFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selected == "" {
+	res, err := pick(artists, artistRender, fmt.Sprintf("Play all (%d artists)", len(artists)), "Select artist", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res.ok {
 		return nil
 	}
 
-	idx := indexOf(artistDisplay, selected)
-	if idx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	if artistIDs[idx] == "__PLAY_ALL__" {
-		var allSongs []api.Song
-		for _, a := range artists {
-			albums, err := client.GetArtist(a.ID)
-			if err != nil {
-				return fmt.Errorf("cannot fetch artist: %w", err)
-			}
-			for _, al := range albums {
-				songs, err := client.GetAlbum(al.ID)
-				if err != nil {
-					return fmt.Errorf("cannot fetch album: %w", err)
-				}
-				allSongs = append(allSongs, songs...)
-			}
+	if res.playAll {
+		allSongs, err := fetchSongsForArtists(client, artists)
+		if err != nil {
+			return err
 		}
 		if len(allSongs) == 0 {
 			fmt.Fprintln(os.Stderr, "No songs found.")
@@ -82,7 +51,7 @@ func Artists() error {
 	}
 
 	fmt.Fprintln(os.Stderr, "Fetching albums...")
-	albums, err := client.GetArtist(artistIDs[idx])
+	albums, err := client.GetArtist(res.item.ID)
 	if err != nil {
 		return fmt.Errorf("cannot fetch artist: %w", err)
 	}
@@ -92,40 +61,22 @@ func Artists() error {
 		return nil
 	}
 
-	albumIDs := make([]string, 0, len(albums))
-	albumDisplay := make([]string, 0, len(albums)+1)
-	albumIDs = append(albumIDs, "__PLAY_ALL__")
-	albumDisplay = append(albumDisplay, fmt.Sprintf("Play all (%d albums)", len(albums)))
-	for _, a := range albums {
-		albumIDs = append(albumIDs, a.ID)
-		display, err := api.RenderAlbum(a, cfg.AlbumFormat)
-		if err != nil {
-			return err
-		}
-		albumDisplay = append(albumDisplay, display)
-	}
-
-	selectedAlbum, err := runSelector(cfg.Selector, strings.Join(albumDisplay, "\n"), "Select album")
+	albumRender, err := api.AlbumRenderer(cfg.AlbumFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selectedAlbum == "" {
+	res2, err := pick(albums, albumRender, fmt.Sprintf("Play all (%d albums)", len(albums)), "Select album", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res2.ok {
 		return nil
 	}
 
-	albumIdx := indexOf(albumDisplay, selectedAlbum)
-	if albumIdx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
-	if albumIDs[albumIdx] == "__PLAY_ALL__" {
-		var allSongs []api.Song
-		for _, a := range albums {
-			songs, err := client.GetAlbum(a.ID)
-			if err != nil {
-				return fmt.Errorf("cannot fetch album: %w", err)
-			}
-			allSongs = append(allSongs, songs...)
+	if res2.playAll {
+		allSongs, err := fetchSongsForAlbums(client, albums)
+		if err != nil {
+			return err
 		}
 		if len(allSongs) == 0 {
 			fmt.Fprintln(os.Stderr, "No songs by this artist.")
@@ -135,7 +86,7 @@ func Artists() error {
 	}
 
 	fmt.Fprintln(os.Stderr, "Fetching songs...")
-	songs, err := client.GetAlbum(albumIDs[albumIdx])
+	songs, err := client.GetAlbum(res2.item.ID)
 	if err != nil {
 		return fmt.Errorf("cannot fetch album: %w", err)
 	}

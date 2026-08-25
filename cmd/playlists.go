@@ -3,24 +3,17 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/james/navifuzz/api"
-	"github.com/james/navifuzz/config"
+	"github.com/ryfrd/navifuzz/api"
 )
 
-func Playlists() error {
-	cfg, err := config.Load()
+func Playlists(configPath string) error {
+	sess, err := newSession(configPath)
 	if err != nil {
 		return err
 	}
-
-	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
-
-	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
-	if err := client.Ping(); err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
-	}
+	client := sess.client
+	cfg := sess.cfg
 
 	fmt.Fprintln(os.Stderr, "Fetching playlists...")
 	playlists, err := client.GetPlaylists()
@@ -33,32 +26,20 @@ func Playlists() error {
 		return nil
 	}
 
-	playlistIDs := make([]string, 0, len(playlists))
-	playlistDisplay := make([]string, 0, len(playlists))
-	for _, p := range playlists {
-		playlistIDs = append(playlistIDs, p.ID)
-		display, err := api.RenderPlaylist(p, cfg.PlaylistFormat)
-		if err != nil {
-			return err
-		}
-		playlistDisplay = append(playlistDisplay, display)
-	}
-
-	selected, err := runSelector(cfg.Selector, strings.Join(playlistDisplay, "\n"), "Select playlist")
+	render, err := api.PlaylistRenderer(cfg.PlaylistFormat)
 	if err != nil {
-		return fmt.Errorf("selector failed: %w", err)
+		return err
 	}
-	if selected == "" {
+	res, err := pick(playlists, render, "", "Select playlist", cfg.Selector)
+	if err != nil {
+		return err
+	}
+	if !res.ok {
 		return nil
 	}
 
-	idx := indexOf(playlistDisplay, selected)
-	if idx < 0 {
-		return fmt.Errorf("selection not found")
-	}
-
 	fmt.Fprintln(os.Stderr, "Fetching songs...")
-	songs, err := client.GetPlaylist(playlistIDs[idx])
+	songs, err := client.GetPlaylist(res.item.ID)
 	if err != nil {
 		return fmt.Errorf("cannot fetch playlist: %w", err)
 	}
