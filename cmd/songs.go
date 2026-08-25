@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/james/navifzf/api"
-	"github.com/james/navifzf/config"
+	"github.com/james/navifuzz/api"
+	"github.com/james/navifuzz/config"
 )
 
 func Songs(size int) error {

@@ -1,25 +1,24 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	Server       string `toml:"server"`
-	Username     string `toml:"username"`
-	Password     string `toml:"password"`
-	Scrobble     bool   `toml:"scrobble"`
-	Selector     string `toml:"selector"`
-	Player       string `toml:"player"`
-	Shuffle      bool   `toml:"shuffle"`
-	Loop         bool   `toml:"loop"`
-	AlbumFormat  string `toml:"album_format"`
-	SongFormat   string `toml:"song_format"`
-	ArtistFormat string `toml:"artist_format"`
+	Server       string `json:"server"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Scrobble     bool   `json:"scrobble"`
+	Selector     string `json:"selector"`
+	Player       string `json:"player"`
+	Shuffle      bool   `json:"shuffle"`
+	Loop         bool   `json:"loop"`
+	AlbumFormat  string `json:"album_format"`
+	SongFormat   string `json:"song_format"`
+	ArtistFormat string `json:"artist_format"`
 }
 
 const (
@@ -29,19 +28,23 @@ const (
 )
 
 func Load() (*Config, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("cannot find home directory: %w", err)
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("cannot find home directory: %w", err)
+		}
+		configDir = filepath.Join(home, ".config")
 	}
 
-	path := filepath.Join(home, ".config", "navifzf", "config.toml")
+	path := filepath.Join(configDir, "navifuzz", "config.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read config %s: %w", path, err)
 	}
 
 	var cfg Config
-	if err := toml.Unmarshal(data, &cfg); err != nil {
+	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("cannot parse config: %w", err)
 	}
 

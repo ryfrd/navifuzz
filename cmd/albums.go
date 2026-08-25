@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/james/navifzf/api"
-	"github.com/james/navifzf/config"
+	"github.com/james/navifuzz/api"
+	"github.com/james/navifuzz/config"
 )
 
 func Albums(listType string, size int) error {
@@ -98,7 +98,7 @@ func playSongs(client *api.Client, songs []api.Song, cfg *config.Config) error {
 	}
 
 	tmpDir := os.TempDir()
-	playlistFile := filepath.Join(tmpDir, "navifzf-playlist.m3u")
+	playlistFile := filepath.Join(tmpDir, "navifuzz-playlist.m3u")
 	if err := os.WriteFile(playlistFile, []byte(strings.Join(urls, "\n")), 0644); err != nil {
 		return fmt.Errorf("cannot write playlist: %w", err)
 	}

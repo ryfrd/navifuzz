@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/james/navifzf/api"
-	"github.com/james/navifzf/config"
+	"github.com/james/navifuzz/api"
+	"github.com/james/navifuzz/config"
 )
 
 func Artists() error {

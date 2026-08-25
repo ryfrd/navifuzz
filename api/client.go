@@ -15,7 +15,7 @@ import (
 )
 
 const apiVersion = "1.16.1"
-const clientName = "navifzf"
+const clientName = "navifuzz"
 
 type Client struct {
 	Server   string

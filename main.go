@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/james/navifzf/cmd"
+	"github.com/james/navifuzz/cmd"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	case "help", "--help", "-h":
 		printUsage()
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "error: unknown command `%s`\n\n", os.Args[1])
 		printUsage()
 		os.Exit(1)
 	}
@@ -32,26 +32,18 @@ func main() {
 
 func runAlbums(args []string) {
 	fs := flag.NewFlagSet("albums", flag.ExitOnError)
-	n := fs.Int("n", 0, "number of albums to fetch (default: all)")
+	n := fs.Int("n", 0, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Usage: navifzf albums [options] [type]
+		fmt.Fprintln(os.Stderr, `Browse and play albums from Navidrome.
 
-Browse and play albums from Navidrome.
+Usage: navifuzz albums [OPTIONS] [TYPE]
 
 Arguments:
-  type    Album list type (default: newest)
+  [TYPE]  Album list type [default: newest] [possible values: newest, recent, frequent, random, starred, alphabetical, played]
 
-Types:
-  newest         Recently added
-  recent         Recently played
-  frequent       Most frequently played
-  random         Random albums
-  starred        Starred/favorited albums
-  alphabetical   Alphabetical order
-  played         Most recently played
-
-Options:`)
-		fs.PrintDefaults()
+Options:
+  -n <N>          Number of albums to fetch [default: all]
+  -h, --help      Print help`)
 	}
 	fs.Parse(args)
 
@@ -66,13 +58,13 @@ Options:`)
 		"played": true,
 	}
 	if !validTypes[listType] {
-		fmt.Fprintf(os.Stderr, "Invalid album list type: %s\n", listType)
-		fmt.Fprintf(os.Stderr, "Valid types: newest, recent, frequent, random, starred, alphabetical, played\n")
+		fmt.Fprintf(os.Stderr, "error: invalid album list type `%s`\n\n", listType)
+		fmt.Fprintln(os.Stderr, "possible values: newest, recent, frequent, random, starred, alphabetical, played")
 		os.Exit(1)
 	}
 
 	if err := cmd.Albums(listType, *n); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -80,49 +72,51 @@ Options:`)
 func runArtists(args []string) {
 	fs := flag.NewFlagSet("artists", flag.ExitOnError)
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Usage: navifzf artists
+		fmt.Fprintln(os.Stderr, `Browse artists, then albums, then songs.
 
-Browse artists, then albums, then songs.`)
+Usage: navifuzz artists [OPTIONS]
+
+Options:
+  -h, --help      Print help`)
 	}
 	fs.Parse(args)
 
 	if err := cmd.Artists(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func runSongs(args []string) {
 	fs := flag.NewFlagSet("songs", flag.ExitOnError)
-	n := fs.Int("n", 0, "number of songs to fetch (default: all)")
+	n := fs.Int("n", 0, "")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, `Usage: navifzf songs [options]
+		fmt.Fprintln(os.Stderr, `Play random songs from the library.
 
-Play random songs from the library.
+Usage: navifuzz songs [OPTIONS]
 
-Options:`)
-		fs.PrintDefaults()
+Options:
+  -n <N>          Number of songs to fetch [default: all]
+  -h, --help      Print help`)
 	}
 	fs.Parse(args)
 
 	if err := cmd.Songs(*n); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, `navifzf - Navidrome CLI with fzf + mpv
-
-Usage:
-  navifzf <command> [options]
+	fmt.Fprintln(os.Stderr, `Usage: navifuzz [OPTIONS] <COMMAND>
 
 Commands:
   albums      Browse and play albums
   artists     Browse artists, albums, and songs
   songs       Play random songs
 
-Run 'navifzf <command> --help' for command-specific help.
+Options:
+  -h, --help      Print help
 
-Config: ~/.config/navifzf/config.toml`)
+Config: ~/.config/navifuzz/config.json`)
 }

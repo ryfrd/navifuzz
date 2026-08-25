@@ -1,0 +1,13 @@
+{
+  "server": "https://navidrome.example.com",
+  "username": "user",
+  "password": "pass",
+  "scrobble": true,
+  "selector": "fzf",
+  "player": "mpv",
+  "shuffle": true,
+  "loop": true,
+  "artist_format": "{{.Name}} ({{.AlbumCount}} albums)",
+  "album_format": "{{.Artist}} - {{.Name}} ({{.Year}}, {{.SongCount}} songs)",
+  "song_format": "{{.TrackStr}}. {{.Title}} ({{.DurationStr}})"
+}
