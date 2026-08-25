@@ -23,6 +23,8 @@ func main() {
 		runSongs(os.Args[2:])
 	case "playlists":
 		runPlaylists(os.Args[2:])
+	case "genres":
+		runGenres(os.Args[2:])
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -127,6 +129,26 @@ Options:
 	}
 }
 
+func runGenres(args []string) {
+	fs := flag.NewFlagSet("genres", flag.ExitOnError)
+	n := fs.Int("n", 0, "")
+	fs.Usage = func() {
+		fmt.Fprintln(os.Stderr, `Browse genres and play songs from a selected genre.
+
+Usage: navifuzz genres [OPTIONS]
+
+Options:
+  -n <N>          Number of songs to fetch [default: all]
+  -h, --help      Print help`)
+	}
+	fs.Parse(args)
+
+	if err := cmd.Genres(*n); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func printUsage() {
 	fmt.Fprintln(os.Stderr, `Usage: navifuzz [OPTIONS] <COMMAND>
 
@@ -135,6 +157,7 @@ Commands:
   artists     Browse artists, albums, and songs
   songs       Play random songs
   playlists   Browse and play playlists
+  genres      Browse genres and play songs
 
 Options:
   -h, --help      Print help

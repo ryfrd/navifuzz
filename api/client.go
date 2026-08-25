@@ -121,6 +121,22 @@ type searchResponse struct {
 	} `json:"searchResult3"`
 }
 
+type Genre struct {
+	Name string `json:"name"`
+}
+
+type genresResponse struct {
+	Genres struct {
+		Genre []Genre `json:"genre"`
+	} `json:"genres"`
+}
+
+type songsByGenreResponse struct {
+	SongsByGenre struct {
+		Song []Song `json:"song"`
+	} `json:"songsByGenre"`
+}
+
 type subsonicError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -339,6 +355,42 @@ func (c *Client) GetPlaylist(id string) ([]Song, error) {
 	}
 
 	return result.Playlist.Song, nil
+}
+
+func (c *Client) GetGenres() ([]Genre, error) {
+	data, err := c.doRequest("getGenres", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result genresResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Genres.Genre, nil
+}
+
+func (c *Client) GetSongsByGenre(genre string, count int) ([]Song, error) {
+	params := url.Values{}
+	params.Set("genre", genre)
+	if count > 0 {
+		params.Set("count", strconv.Itoa(count))
+	} else {
+		params.Set("count", "99999")
+	}
+
+	data, err := c.doRequest("getSongsByGenre", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var result songsByGenreResponse
+	if err := c.parseResponse(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result.SongsByGenre.Song, nil
 }
 
 type randomSongsResponse struct {
