@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/ryfrd/navifuzz/cmd"
@@ -37,7 +36,6 @@ func main() {
 }
 
 func parseGlobals(args []string) (opts cmd.Options, versionOnly bool, rest []string) {
-	var shuffle, loop *bool
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--config":
@@ -67,40 +65,12 @@ func parseGlobals(args []string) (opts cmd.Options, versionOnly bool, rest []str
 			i++
 		case strings.HasPrefix(args[i], "--player="):
 			opts.Player = strings.TrimPrefix(args[i], "--player=")
-		case args[i] == "--shuffle":
-			v := true
-			shuffle = &v
-		case args[i] == "--no-shuffle":
-			v := false
-			shuffle = &v
-		case strings.HasPrefix(args[i], "--shuffle="):
-			v, err := strconv.ParseBool(strings.TrimPrefix(args[i], "--shuffle="))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: invalid value for --shuffle: %s\n", strings.TrimPrefix(args[i], "--shuffle="))
-				os.Exit(1)
-			}
-			shuffle = &v
-		case args[i] == "--loop":
-			v := true
-			loop = &v
-		case args[i] == "--no-loop":
-			v := false
-			loop = &v
-		case strings.HasPrefix(args[i], "--loop="):
-			v, err := strconv.ParseBool(strings.TrimPrefix(args[i], "--loop="))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: invalid value for --loop: %s\n", strings.TrimPrefix(args[i], "--loop="))
-				os.Exit(1)
-			}
-			loop = &v
 		case args[i] == "--version" || args[i] == "-V" || args[i] == "-v":
 			versionOnly = true
 		default:
 			rest = append(rest, args[i])
 		}
 	}
-	opts.Shuffle = shuffle
-	opts.Loop = loop
 	return opts, versionOnly, rest
 }
 
@@ -287,8 +257,6 @@ Options:
       --config <PATH>     Path to config file [default: ~/.config/navifuzz/config.json]
       --selector <NAME>   Override the selector from the config file (fzf, dmenu, rofi, fuzzel, tofi, wofi, bemenu, sk)
       --player <NAME>     Override the player from the config file (mpv, vlc)
-      --shuffle[=BOOL]    Override shuffle from the config file (also --no-shuffle)
-      --loop[=BOOL]       Override loop from the config file (also --no-loop)
   -h, --help              Print help
   -v, -V, --version       Print version`)
 }

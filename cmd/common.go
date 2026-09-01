@@ -13,8 +13,6 @@ type Options struct {
 	ConfigPath string
 	Selector   string
 	Player     string
-	Shuffle    *bool
-	Loop       *bool
 }
 
 type session struct {
@@ -32,12 +30,6 @@ func newSession(opts Options) (*session, error) {
 	}
 	if opts.Player != "" {
 		cfg.Player = opts.Player
-	}
-	if opts.Shuffle != nil {
-		cfg.Shuffle = *opts.Shuffle
-	}
-	if opts.Loop != nil {
-		cfg.Loop = *opts.Loop
 	}
 	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
 	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")
