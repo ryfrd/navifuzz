@@ -49,3 +49,15 @@ navifuzz needs the following:
 Copy `config.example.json` to `~/.config/navifuzz/config.json` (or `$XDG_CONFIG_HOME/navifuzz/config.json` if set) and adjust to your liking.
 
 `server`, `username`, and `password` are required. The rest are optional.
+
+The picker and player can also be overridden per-invocation without touching the config file:
+
+```sh
+navifuzz --selector rofi albums
+navifuzz --player vlc songs
+navifuzz --shuffle --loop albums
+navifuzz --no-shuffle songs
+navifuzz --config /path/to/other/config.json albums
+```
+
+The `--config`, `--selector`, `--player`, `--shuffle`, and `--loop` flags can appear anywhere before or after the command. For `--shuffle`/`--loop`, `--no-shuffle`/`--no-loop` and the `--shuffle=true|false` / `--loop=true|false` forms are also accepted; when omitted the config file value is used.

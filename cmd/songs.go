@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-func Songs(size int, configPath string) error {
-	sess, err := newSession(configPath)
+func Songs(size int, opts Options) error {
+	sess, err := newSession(opts)
 	if err != nil {
 		return err
 	}

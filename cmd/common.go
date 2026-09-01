@@ -9,15 +9,35 @@ import (
 	"github.com/ryfrd/navifuzz/config"
 )
 
+type Options struct {
+	ConfigPath string
+	Selector   string
+	Player     string
+	Shuffle    *bool
+	Loop       *bool
+}
+
 type session struct {
 	cfg    *config.Config
 	client *api.Client
 }
 
-func newSession(configPath string) (*session, error) {
-	cfg, err := config.LoadPath(configPath)
+func newSession(opts Options) (*session, error) {
+	cfg, err := config.LoadPath(opts.ConfigPath)
 	if err != nil {
 		return nil, err
+	}
+	if opts.Selector != "" {
+		cfg.Selector = opts.Selector
+	}
+	if opts.Player != "" {
+		cfg.Player = opts.Player
+	}
+	if opts.Shuffle != nil {
+		cfg.Shuffle = *opts.Shuffle
+	}
+	if opts.Loop != nil {
+		cfg.Loop = *opts.Loop
 	}
 	client := api.NewClient(cfg.Server, cfg.Username, cfg.Password)
 	fmt.Fprintln(os.Stderr, "Connecting to Navidrome...")

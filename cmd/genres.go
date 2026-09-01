@@ -7,8 +7,8 @@ import (
 	"github.com/ryfrd/navifuzz/api"
 )
 
-func Genres(n int, configPath string) error {
-	sess, err := newSession(configPath)
+func Genres(n int, opts Options) error {
+	sess, err := newSession(opts)
 	if err != nil {
 		return err
 	}

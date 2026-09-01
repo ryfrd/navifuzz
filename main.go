@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ryfrd/navifuzz/cmd"
@@ -12,7 +13,7 @@ import (
 var version = "0.1.0"
 
 func main() {
-	configPath, versionOnly, args := parseGlobals(os.Args[1:])
+	opts, versionOnly, args := parseGlobals(os.Args[1:])
 	if versionOnly {
 		fmt.Printf("navifuzz %s\n", version)
 		return
@@ -32,10 +33,11 @@ func main() {
 		return
 	}
 
-	runCommand(args[0], args[1:], configPath)
+	runCommand(args[0], args[1:], opts)
 }
 
-func parseGlobals(args []string) (configPath string, versionOnly bool, rest []string) {
+func parseGlobals(args []string) (opts cmd.Options, versionOnly bool, rest []string) {
+	var shuffle, loop *bool
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--config":
@@ -43,31 +45,77 @@ func parseGlobals(args []string) (configPath string, versionOnly bool, rest []st
 				fmt.Fprintln(os.Stderr, "error: --config requires a path")
 				os.Exit(1)
 			}
-			configPath = args[i+1]
+			opts.ConfigPath = args[i+1]
 			i++
 		case strings.HasPrefix(args[i], "--config="):
-			configPath = strings.TrimPrefix(args[i], "--config=")
+			opts.ConfigPath = strings.TrimPrefix(args[i], "--config=")
+		case args[i] == "--selector":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --selector requires a value")
+				os.Exit(1)
+			}
+			opts.Selector = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--selector="):
+			opts.Selector = strings.TrimPrefix(args[i], "--selector=")
+		case args[i] == "--player":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --player requires a value")
+				os.Exit(1)
+			}
+			opts.Player = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--player="):
+			opts.Player = strings.TrimPrefix(args[i], "--player=")
+		case args[i] == "--shuffle":
+			v := true
+			shuffle = &v
+		case args[i] == "--no-shuffle":
+			v := false
+			shuffle = &v
+		case strings.HasPrefix(args[i], "--shuffle="):
+			v, err := strconv.ParseBool(strings.TrimPrefix(args[i], "--shuffle="))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: invalid value for --shuffle: %s\n", strings.TrimPrefix(args[i], "--shuffle="))
+				os.Exit(1)
+			}
+			shuffle = &v
+		case args[i] == "--loop":
+			v := true
+			loop = &v
+		case args[i] == "--no-loop":
+			v := false
+			loop = &v
+		case strings.HasPrefix(args[i], "--loop="):
+			v, err := strconv.ParseBool(strings.TrimPrefix(args[i], "--loop="))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: invalid value for --loop: %s\n", strings.TrimPrefix(args[i], "--loop="))
+				os.Exit(1)
+			}
+			loop = &v
 		case args[i] == "--version" || args[i] == "-V" || args[i] == "-v":
 			versionOnly = true
 		default:
 			rest = append(rest, args[i])
 		}
 	}
-	return configPath, versionOnly, rest
+	opts.Shuffle = shuffle
+	opts.Loop = loop
+	return opts, versionOnly, rest
 }
 
-func runCommand(name string, args []string, configPath string) {
+func runCommand(name string, args []string, opts cmd.Options) {
 	switch name {
 	case "albums":
-		runAlbums(args, configPath)
+		runAlbums(args, opts)
 	case "artists":
-		runArtists(args, configPath)
+		runArtists(args, opts)
 	case "songs":
-		runSongs(args, configPath)
+		runSongs(args, opts)
 	case "playlists":
-		runPlaylists(args, configPath)
+		runPlaylists(args, opts)
 	case "genres":
-		runGenres(args, configPath)
+		runGenres(args, opts)
 	default:
 		fmt.Fprintf(os.Stderr, "error: unknown command `%s`\n\n", name)
 		printUsage()
@@ -75,7 +123,7 @@ func runCommand(name string, args []string, configPath string) {
 	}
 }
 
-func runAlbums(args []string, configPath string) {
+func runAlbums(args []string, opts cmd.Options) {
 	fs := flag.NewFlagSet("albums", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
 	help := fs.Bool("h", false, "")
@@ -115,13 +163,13 @@ Options:
 		os.Exit(1)
 	}
 
-	if err := cmd.Albums(listType, *n, configPath); err != nil {
+	if err := cmd.Albums(listType, *n, opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runArtists(args []string, configPath string) {
+func runArtists(args []string, opts cmd.Options) {
 	fs := flag.NewFlagSet("artists", flag.ExitOnError)
 	help := fs.Bool("h", false, "")
 	fs.BoolVar(help, "help", false, "")
@@ -140,13 +188,13 @@ Options:
 		os.Exit(0)
 	}
 
-	if err := cmd.Artists(configPath); err != nil {
+	if err := cmd.Artists(opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runSongs(args []string, configPath string) {
+func runSongs(args []string, opts cmd.Options) {
 	fs := flag.NewFlagSet("songs", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
 	help := fs.Bool("h", false, "")
@@ -167,13 +215,13 @@ Options:
 		os.Exit(0)
 	}
 
-	if err := cmd.Songs(*n, configPath); err != nil {
+	if err := cmd.Songs(*n, opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runPlaylists(args []string, configPath string) {
+func runPlaylists(args []string, opts cmd.Options) {
 	fs := flag.NewFlagSet("playlists", flag.ExitOnError)
 	help := fs.Bool("h", false, "")
 	fs.BoolVar(help, "help", false, "")
@@ -192,13 +240,13 @@ Options:
 		os.Exit(0)
 	}
 
-	if err := cmd.Playlists(configPath); err != nil {
+	if err := cmd.Playlists(opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runGenres(args []string, configPath string) {
+func runGenres(args []string, opts cmd.Options) {
 	fs := flag.NewFlagSet("genres", flag.ExitOnError)
 	n := fs.Int("n", 0, "")
 	help := fs.Bool("h", false, "")
@@ -219,7 +267,7 @@ Options:
 		os.Exit(0)
 	}
 
-	if err := cmd.Genres(*n, configPath); err != nil {
+	if err := cmd.Genres(*n, opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
@@ -237,6 +285,10 @@ Commands:
 
 Options:
       --config <PATH>     Path to config file [default: ~/.config/navifuzz/config.json]
+      --selector <NAME>   Override the selector from the config file (fzf, dmenu, rofi, fuzzel, tofi, wofi, bemenu, sk)
+      --player <NAME>     Override the player from the config file (mpv, vlc)
+      --shuffle[=BOOL]    Override shuffle from the config file (also --no-shuffle)
+      --loop[=BOOL]       Override loop from the config file (also --no-loop)
   -h, --help              Print help
   -v, -V, --version       Print version`)
 }

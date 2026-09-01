@@ -7,8 +7,8 @@ import (
 	"github.com/ryfrd/navifuzz/api"
 )
 
-func Artists(configPath string) error {
-	sess, err := newSession(configPath)
+func Artists(opts Options) error {
+	sess, err := newSession(opts)
 	if err != nil {
 		return err
 	}

@@ -12,8 +12,8 @@ import (
 	"github.com/ryfrd/navifuzz/config"
 )
 
-func Albums(listType string, size int, configPath string) error {
-	sess, err := newSession(configPath)
+func Albums(listType string, size int, opts Options) error {
+	sess, err := newSession(opts)
 	if err != nil {
 		return err
 	}
