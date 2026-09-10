@@ -255,7 +255,7 @@ Commands:
 
 Options:
       --config <PATH>     Path to config file [default: ~/.config/navifuzz/config.json]
-      --selector <NAME>   Override the selector from the config file (fzf, dmenu, rofi, fuzzel, tofi, wofi, bemenu, sk)
+      --selector <NAME>   Override the selector from the config file (fzf, dmenu, rofi, fuzzel, tofi, wofi, bemenu, sk, noctalia)
       --player <NAME>     Override the player from the config file (mpv, vlc)
   -h, --help              Print help
   -v, -V, --version       Print version`)

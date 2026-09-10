@@ -240,7 +240,7 @@ func runSelector(name, input, prompt string) (string, error) {
 // eg. launched from a keybinding.
 func needsTTY(name string) bool {
 	switch name {
-	case "dmenu", "fuzzel", "rofi", "tofi", "wofi", "bemenu":
+	case "dmenu", "fuzzel", "rofi", "tofi", "wofi", "bemenu", "noctalia":
 		return false
 	default: // fzf, sk, and unknown names, which fall back to fzf
 		return true
@@ -305,20 +305,22 @@ func playerArgs(name, playlist string, shuffle, loop bool) []string {
 func selectorArgs(name, prompt string) []string {
 	switch name {
 	case "dmenu":
-		return []string{"dmenu", "-p", prompt + " > "}
+		return []string{"dmenu", "-p", prompt + "..."}
 	case "fuzzel":
-		return []string{"fuzzel", "--dmenu", "-p", prompt + " > "}
+		return []string{"fuzzel", "--dmenu", "-p", prompt + "..."}
 	case "rofi":
-		return []string{"rofi", "-dmenu", "-p", prompt}
+		return []string{"rofi", "-dmenu", "-p", prompt + "..."}
 	case "tofi":
-		return []string{"tofi", "--prompt-text=" + prompt + " > "}
+		return []string{"tofi", "--prompt-text=" + prompt + "..."}
 	case "wofi":
-		return []string{"wofi", "--dmenu", "-p", prompt}
+		return []string{"wofi", "--dmenu", "-p", prompt + "..."}
 	case "bemenu":
-		return []string{"bemenu", "-p", prompt + " > "}
+		return []string{"bemenu", "-p", prompt + "..."}
+	case "noctalia":
+		return []string{"noctalia", "dmenu", "--prompt", prompt + "..."}
 	case "sk":
-		return []string{"sk", "--prompt", prompt + " > "}
+		return []string{"sk", "--prompt", prompt + "..."}
 	default: // fzf
-		return []string{"fzf", "--prompt", prompt + " > "}
+		return []string{"fzf", "--prompt", prompt + "..."}
 	}
 }
