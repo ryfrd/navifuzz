@@ -175,7 +175,7 @@ func runSongs(args []string, opts cmd.Options) {
 Usage: navifuzz songs [OPTIONS]
 
 Options:
-  -n <N>          Number of songs to fetch [default: all]
+  -n <N>          Number of songs to fetch [default: 500, max: 500]
   -h, --help      Print help`)
 	}
 	fs.Parse(args)

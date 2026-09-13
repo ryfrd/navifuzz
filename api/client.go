@@ -252,25 +252,38 @@ func (c *Client) Ping() error {
 }
 
 func (c *Client) GetAlbumList2(listType string, size int) ([]Album, error) {
-	params := url.Values{}
-	params.Set("type", listType)
-	if size > 0 {
-		params.Set("size", strconv.Itoa(size))
-	} else {
-		params.Set("size", "99999")
-	}
+	const pageSize = 500
+	var all []Album
+	for offset := 0; ; offset += pageSize {
+		want := pageSize
+		if size > 0 && size-offset < want {
+			want = size - offset
+		}
+		if want <= 0 {
+			break
+		}
 
-	data, err := c.doRequest("getAlbumList2", params)
-	if err != nil {
-		return nil, err
-	}
+		params := url.Values{}
+		params.Set("type", listType)
+		params.Set("size", strconv.Itoa(want))
+		params.Set("offset", strconv.Itoa(offset))
 
-	var result albumListResponse
-	if err := c.parseResponse(data, &result); err != nil {
-		return nil, err
-	}
+		data, err := c.doRequest("getAlbumList2", params)
+		if err != nil {
+			return nil, err
+		}
 
-	return result.AlbumList2.Album, nil
+		var result albumListResponse
+		if err := c.parseResponse(data, &result); err != nil {
+			return nil, err
+		}
+
+		all = append(all, result.AlbumList2.Album...)
+		if len(result.AlbumList2.Album) < want {
+			break
+		}
+	}
+	return all, nil
 }
 
 func (c *Client) GetAlbum(id string) ([]Song, error) {
@@ -371,25 +384,38 @@ func (c *Client) GetGenres() ([]Genre, error) {
 }
 
 func (c *Client) GetSongsByGenre(genre string, count int) ([]Song, error) {
-	params := url.Values{}
-	params.Set("genre", genre)
-	if count > 0 {
-		params.Set("count", strconv.Itoa(count))
-	} else {
-		params.Set("count", "99999")
-	}
+	const pageSize = 500
+	var all []Song
+	for offset := 0; ; offset += pageSize {
+		want := pageSize
+		if count > 0 && count-offset < want {
+			want = count - offset
+		}
+		if want <= 0 {
+			break
+		}
 
-	data, err := c.doRequest("getSongsByGenre", params)
-	if err != nil {
-		return nil, err
-	}
+		params := url.Values{}
+		params.Set("genre", genre)
+		params.Set("count", strconv.Itoa(want))
+		params.Set("offset", strconv.Itoa(offset))
 
-	var result songsByGenreResponse
-	if err := c.parseResponse(data, &result); err != nil {
-		return nil, err
-	}
+		data, err := c.doRequest("getSongsByGenre", params)
+		if err != nil {
+			return nil, err
+		}
 
-	return result.SongsByGenre.Song, nil
+		var result songsByGenreResponse
+		if err := c.parseResponse(data, &result); err != nil {
+			return nil, err
+		}
+
+		all = append(all, result.SongsByGenre.Song...)
+		if len(result.SongsByGenre.Song) < want {
+			break
+		}
+	}
+	return all, nil
 }
 
 type randomSongsResponse struct {
@@ -399,12 +425,11 @@ type randomSongsResponse struct {
 }
 
 func (c *Client) GetRandomSongs(size int) ([]Song, error) {
-	params := url.Values{}
-	if size > 0 {
-		params.Set("size", strconv.Itoa(size))
-	} else {
-		params.Set("size", "99999")
+	if size <= 0 || size > 500 {
+		size = 500 // Navidrome caps getRandomSongs at 500
 	}
+	params := url.Values{}
+	params.Set("size", strconv.Itoa(size))
 
 	data, err := c.doRequest("getRandomSongs", params)
 	if err != nil {
