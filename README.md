@@ -34,6 +34,37 @@ Or install directly to your `GOBIN`:
 go install .
 ```
 
+## Nix
+
+The repo ships a flake. Install with one command:
+
+```sh
+nix run github:ryfrd/navifuzz -- albums
+```
+
+Or add to your profile:
+
+```sh
+nix profile install github:ryfrd/navifuzz
+```
+
+A [home-manager](https://github.com/nix-community/home-manager) module provides
+`programs.navifuzz` (options: `enable`, `package`, `settings`), which installs
+the package and writes `~/.config/navifuzz/config.json`:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    navifuzz.url = "github:ryfrd/navifuzz";
+  };
+  outputs = { navifuzz, ... }: {
+    homeManagerModules.default = navifuzz.homeManagerModules.default;
+  };
+}
+```
+
 ## Usage
 
 ### Dependencies
@@ -42,7 +73,7 @@ navifuzz needs the following:
 
 - A [navidrome](https://navidrome.org/) server running somewhere.
 - A media player: [mpv](https://mpv.io/) or [vlc](https://www.videolan.org/vlc/) currently supported.
-- A fuzzy picker/launcher: [fzf](https://github.com/junegunn/fzf), [skim](https://github.com/lotabout/skim), [fuzzel](https://codeberg.org/dnkl/fuzzel), [rofi](https://github.com/davatorium/rofi), [tofi](https://github.com/philj56/tofi), [wofi](https://hg.sr.ht/~scoopta/wofi), [dmenu](https://tools.suckless.org/dmenu/), and [bemenu](https://github.com/Cloudef/bemenu) currently supported.
+- A fuzzy picker/launcher: [fzf](https://github.com/junegunn/fzf), [skim](https://github.com/lotabout/skim), [fuzzel](https://codeberg.org/dnkl/fuzzel), [rofi](https://github.com/davatorium/rofi), [tofi](https://github.com/philj56/tofi), [wofi](https://hg.sr.ht/~scoopta/wofi), [dmenu](https://tools.suckless.org/dmenu/), [bemenu](https://github.com/Cloudef/bemenu), and [noctalia](https://noctalia.dev/) currently supported.
 
 ### Configuration
 
